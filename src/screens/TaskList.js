@@ -21,6 +21,9 @@ import Task from '../components/Task'
 import AddTask from './AddTask'
 import commonStyles from '../commonStyles'
 import todayImage from '../../assets/imgs/today.jpg'
+import tomorrowImage from '../../assets/imgs/tomorrow.jpg'
+import weekImage from '../../assets/imgs/week.jpg'
+import monthImage from '../../assets/imgs/month.jpg'
 import { server, showError } from '../common'
 
 
@@ -51,7 +54,9 @@ export default class TaskList extends Component{
 
     loadTasks = async () => {
         try{
-            const maxDate = moment().format('YYYY-MM-DD 23:59:59')
+            const maxDate = moment()
+                .add({ days: this.props.daysAhead})
+                .format('YYYY-MM-DD 23:59:59')
             const res = await axios.get(`${server}/tasks?date=${maxDate}`)
             this.setState({ tasks: res.data}, this.filterTasks)
         }catch(e){
@@ -81,7 +86,7 @@ export default class TaskList extends Component{
     toggleTask = async taskId => {
         try{
             await axios.put(`${server}/tasks/${taskId}/toggle`)
-            await this.loadTasks()
+            this.loadTasks()
         }catch(e){
             showError(e)
         }
@@ -110,9 +115,27 @@ export default class TaskList extends Component{
     deleteTask = async taskId => {
         try{
             await axios.delete(`${server}/tasks/${taskId}`)
-            await this.loadTasks()
+            this.loadTasks()
         }catch(e){
             showError(e)
+        }
+    }
+
+    getImage = () => {
+        switch(this.props.daysAhead){
+            case 0: return todayImage
+            case 1: return tomorrowImage
+            case 7: return weekImage
+            default: return monthImage
+        }
+    }
+
+    getColor = () => {
+        switch(this.props.daysAhead){
+            case 0: return commonStyles.colors.today
+            case 1: return commonStyles.colors.tomorrow
+            case 7: return commonStyles.colors.week
+            default: return commonStyles.colors.month
         }
     }
 
@@ -126,10 +149,17 @@ export default class TaskList extends Component{
                     onSave={this.addTask}
                 />
                 <ImageBackground 
-                    source={todayImage}
+                    source={this.getImage()}
                     style={styles.background}
                 >
                     <View style={styles.iconBar}>
+                        <TouchableOpacity onPress={() => this.props.navigation.openDrawer()}>
+                            <Icon
+                                name="bars"
+                                size={20}
+                                color={commonStyles.colors.secondary}
+                            />
+                        </TouchableOpacity>
                         <TouchableOpacity onPress={this.toggleFilter}>
                             <Icon 
                                 name={this.state.showDoneTasks ? 'eye' : 'eye-slash'} 
@@ -139,7 +169,7 @@ export default class TaskList extends Component{
                         </TouchableOpacity>
                     </View>
                     <View style={styles.titleBar}>
-                        <Text style={styles.title}>Hoje</Text>
+                        <Text style={styles.title}>{this.props.title}</Text>
                         <Text style={styles.subTitle}>{today}</Text>
                     </View>
 
@@ -152,7 +182,7 @@ export default class TaskList extends Component{
                     />
                 </View>
                 <TouchableOpacity 
-                    style={styles.addButton}
+                    style={[styles.addButton, {backgroundColor: this.getColor()}]}
                     activeOpacity={0.7}
                     onPress={() => this.setState({ showAddTask: true })}
                     >
@@ -193,7 +223,7 @@ const styles = StyleSheet.create({
     },
     iconBar:{
         flexDirection: "row",
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
         marginHorizontal: 20,
         marginTop: Platform.OS === 'ios' ? 40 : 10,
     },
